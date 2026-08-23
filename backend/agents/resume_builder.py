@@ -21,7 +21,7 @@ from backend.config import (
     PROFILE_FILE,
     PDFLATEX_PATH,
 )
-from backend.models.schemas import ResumeGenerateRequest, ResumeHistoryItem
+from backend.models.schemas import ResumeGenerateRequest, ResumeHistoryItem, TeXCompileRequest
 
 logger = logging.getLogger("resume_builder")
 
@@ -366,6 +366,104 @@ class ResumeBuilderAgent:
                 role_title=history_item.role_title,
                 jd_pdf_bytes=None,
                 tex_content=latex_code,
+                pdf_filename=history_item.pdf_file,
+            )
+        except Exception as e:
+            logger.error(f"Error logging record to SQLite: {e}")
+
+        return history_item
+
+    def compile_template_pdf(self, template_name: str) -> Path:
+        """Compiles template .tex into template preview .pdf in TEMPLATES_DIR."""
+        template_path = TEMPLATES_DIR / template_name
+        if not template_path.exists():
+            template_path = Path("/home/ishaan/Code/ResumeIt/template_1.tex")
+            if not template_path.exists():
+                raise FileNotFoundError(f"Template file not found: {template_name}")
+
+        pdf_name = f"preview_{template_path.stem}.pdf"
+        pdf_path = TEMPLATES_DIR / pdf_name
+
+        if pdf_path.exists() and pdf_path.stat().st_mtime >= template_path.stat().st_mtime:
+            return pdf_path
+
+        cmd = [
+            PDFLATEX_PATH,
+            "-interaction=nonstopmode",
+            "-output-directory", str(TEMPLATES_DIR),
+            "-jobname", f"preview_{template_path.stem}",
+            str(template_path)
+        ]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+            if res.returncode != 0:
+                logger.warning(f"pdflatex template compile log snippet: {res.stdout[-500:]}")
+        except Exception as e:
+            logger.error(f"pdflatex template compile failed: {e}")
+
+        if not pdf_path.exists():
+            raise RuntimeError(f"Template PDF compilation failed for {template_name}")
+
+        return pdf_path
+
+    def compile_raw_tex(self, req: TeXCompileRequest) -> ResumeHistoryItem:
+        """Compiles user-edited raw LaTeX string into PDF and saves in OUTPUT_DIR."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        company_clean = (req.target_company or "Company").replace(" ", "_").lower()
+
+        if req.filename and req.filename.endswith(".tex"):
+            base_stem = Path(req.filename).stem
+            tex_filename = f"{base_stem}.tex"
+            pdf_filename = f"{base_stem}.pdf"
+        else:
+            base_stem = f"resume_{company_clean}_{timestamp}"
+            tex_filename = f"{base_stem}.tex"
+            pdf_filename = f"{base_stem}.pdf"
+
+        tex_path = OUTPUT_DIR / tex_filename
+        pdf_path = OUTPUT_DIR / pdf_filename
+
+        with open(tex_path, "w", encoding="utf-8") as f:
+            f.write(req.tex_content)
+
+        cmd = [
+            PDFLATEX_PATH,
+            "-interaction=nonstopmode",
+            "-output-directory", str(OUTPUT_DIR),
+            "-jobname", base_stem,
+            str(tex_path)
+        ]
+
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+            if res.returncode != 0:
+                logger.warning(f"pdflatex compile log snippet: {res.stdout[-500:]}")
+        except Exception as e:
+            logger.error(f"pdflatex subprocess failed: {e}")
+
+        if not pdf_path.exists():
+            raise RuntimeError(f"LaTeX PDF compilation failed for {tex_path}. Check TeX syntax.")
+
+        history_item = ResumeHistoryItem(
+            id=str(uuid.uuid4())[:8],
+            company_name=req.target_company or "Target Company",
+            role_title=req.target_role or "Software Engineer",
+            created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            template_name="custom_edited.tex",
+            selected_project_ids=[],
+            latex_file=tex_filename,
+            pdf_file=pdf_filename
+        )
+
+        self.save_history(history_item)
+        try:
+            from backend.database import save_record
+            save_record(
+                uuid_str=history_item.id,
+                company_name=history_item.company_name,
+                role_title=history_item.role_title,
+                jd_pdf_bytes=None,
+                tex_content=req.tex_content,
                 pdf_filename=history_item.pdf_file,
             )
         except Exception as e:

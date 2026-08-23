@@ -37,6 +37,7 @@ from backend.models.schemas import (
     ResumeGenerateRequest,
     LLMSelectRequest,
     LLMPingRequest,
+    TeXCompileRequest,
 )
 from backend.agents.llm_router import llm_router
 from backend.agents.repo_indexer import repo_indexer
@@ -504,7 +505,7 @@ def stream_pdf(filename: str):
     file_path = OUTPUT_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="PDF file not found.")
-    return FileResponse(path=file_path, media_type="application/pdf", filename=filename)
+    return FileResponse(path=file_path, media_type="application/pdf", content_disposition_type="inline")
 
 
 @app.get("/api/resume/tex/{filename}")
@@ -512,7 +513,60 @@ def stream_tex(filename: str):
     file_path = OUTPUT_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="LaTeX source file not found.")
-    return FileResponse(path=file_path, media_type="text/plain", filename=filename)
+    return FileResponse(path=file_path, media_type="text/plain", content_disposition_type="inline")
+
+
+@app.get("/api/templates/pdf/{filename}")
+def stream_template_pdf(filename: str):
+    try:
+        pdf_path = resume_builder_agent.compile_template_pdf(filename)
+        return FileResponse(path=pdf_path, media_type="application/pdf", content_disposition_type="inline")
+    except Exception as e:
+        logger.exception("Template PDF compilation failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/templates/tex/{filename}")
+def stream_template_tex(filename: str):
+    file_path = TEMPLATES_DIR / filename
+    if not file_path.exists():
+        file_path = Path("/home/ishaan/Code/ResumeIt/template_1.tex")
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Template file not found.")
+    return FileResponse(path=file_path, media_type="text/plain", content_disposition_type="inline")
+
+
+@app.post("/api/resume/compile-tex")
+def compile_custom_tex(req: TeXCompileRequest):
+    """Compiles user-edited raw LaTeX string into PDF."""
+    try:
+        history_item = resume_builder_agent.compile_raw_tex(req)
+        return {
+            "message": "LaTeX compiled successfully",
+            "history": history_item,
+            "pdf_url": f"/api/resume/pdf/{history_item.pdf_file}",
+            "tex_url": f"/api/resume/tex/{history_item.latex_file}",
+        }
+    except Exception as e:
+        logger.exception("Custom LaTeX compilation failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/resume/download/{filename}")
+def download_file(filename: str):
+    """Downloads requested PDF or TeX file as attachment."""
+    file_path = OUTPUT_DIR / filename
+    if not file_path.exists():
+        file_path = TEMPLATES_DIR / filename
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"Requested file '{filename}' not found.")
+
+    media_type = "application/pdf" if filename.endswith(".pdf") else "text/plain"
+    return FileResponse(
+        path=file_path,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
 
 
 # --- SQLITE SINGLE-TABLE RECORDS ENDPOINTS ---

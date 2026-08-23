@@ -114,24 +114,52 @@ Docker Enabled: {deps.get('docker', False)}
 
         raw_scores = None
         if isinstance(llm_response, dict):
-            raw_scores = llm_response.get("category_scores") or llm_response.get("ratings")
+            raw_scores = llm_response.get("category_scores") or llm_response.get("ratings") or llm_response.get("categories")
+            if not raw_scores:
+                for k in ["rating", "Rating", "ratings", "Ratings", "categoryScores", "categories"]:
+                    if isinstance(llm_response.get(k), dict):
+                        raw_scores = llm_response.get(k)
+                        break
+            if not raw_scores and any(k.lower() in ["frontend", "backend", "system_design"] for k in llm_response.keys()):
+                raw_scores = llm_response
 
-        if not raw_scores:
+        if not raw_scores or not isinstance(raw_scores, dict):
             raise RuntimeError(f"No LLM provider available for repository rating. LLM output: {llm_response}")
 
+        def parse_score(keys: list, default: int = 3) -> int:
+            lower_dict = {str(k).lower(): v for k, v in raw_scores.items()}
+            for k in keys:
+                if k.lower() in lower_dict:
+                    try:
+                        return min(5, max(1, int(lower_dict[k.lower()])))
+                    except (ValueError, TypeError):
+                        pass
+            return default
+
         category_scores = CategoryScores(
-            frontend=min(5, max(1, int(raw_scores.get("frontend", 3)))),
-            backend=min(5, max(1, int(raw_scores.get("backend", 3)))),
-            system_design=min(5, max(1, int(raw_scores.get("system_design", 3)))),
-            database=min(5, max(1, int(raw_scores.get("database", 3)))),
-            devops=min(5, max(1, int(raw_scores.get("devops", 3)))),
-            architecture=min(5, max(1, int(raw_scores.get("architecture", 3)))),
-            cloud=min(5, max(1, int(raw_scores.get("cloud", 3)))),
+            frontend=parse_score(["frontend"]),
+            backend=parse_score(["backend"]),
+            system_design=parse_score(["system_design", "systemdesign", "system_design_score"]),
+            database=parse_score(["database"]),
+            devops=parse_score(["devops"]),
+            architecture=parse_score(["architecture"]),
+            cloud=parse_score(["cloud"]),
         )
 
-        bullets = [str(b) for b in llm_response.get("bullet_points", [])] if isinstance(llm_response.get("bullet_points"), list) else [
-            f"Engineered {repo_name} system modules using {', '.join(tech_stack[:4])}."
-        ]
+        raw_bullets = llm_response.get("bullet_points") or llm_response.get("bulletPoints") or llm_response.get("metrics") or llm_response.get("bullets")
+        bullets = []
+        if isinstance(raw_bullets, list):
+            for b in raw_bullets:
+                if isinstance(b, str):
+                    bullets.append(b)
+                elif isinstance(b, dict):
+                    verb = b.get("actionVerb") or b.get("action_verb") or b.get("verb") or "Engineered"
+                    ctx = b.get("technicalContext") or b.get("technical_context") or b.get("context") or "system modules"
+                    tech = b.get("techStackUsed") or b.get("tech_stack_used") or b.get("techStack") or b.get("tech_stack") or ", ".join(tech_stack[:3])
+                    impact = b.get("quantitativeImpact") or b.get("quantitative_impact") or b.get("impact") or ""
+                    bullets.append(f"{verb} {ctx} using {tech}; {impact}".strip("; "))
+        if not bullets:
+            bullets = [f"Engineered {repo_name} system modules using {', '.join(tech_stack[:4])}."]
 
         # Check if project already exists in storage
         existing_projects = self.load_projects()

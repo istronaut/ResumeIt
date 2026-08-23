@@ -138,3 +138,11 @@ class LLMPingRequest(BaseModel):
     provider: str
     model: Optional[str] = None
 
+
+class TeXCompileRequest(BaseModel):
+    tex_content: str
+    filename: Optional[str] = None
+    target_company: Optional[str] = "Target Company"
+    target_role: Optional[str] = "Software Engineer"
+
+

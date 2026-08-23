@@ -52,6 +52,7 @@ export default function App() {
   // Live Resume PDF State
   const [currentPdfUrl, setCurrentPdfUrl] = useState('');
   const [currentTexUrl, setCurrentTexUrl] = useState('');
+  const [hasGenerated, setHasGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   // Repo Indexer State
@@ -180,11 +181,6 @@ export default function App() {
       if (projData.length > 0) {
         setSelectedProjectIds(projData.map(p => p.id));
       }
-
-      if (histData.length > 0) {
-        setCurrentPdfUrl(`/api/resume/pdf/${histData[0].pdf_file}`);
-        setCurrentTexUrl(`/api/resume/tex/${histData[0].latex_file}`);
-      }
     } catch (e) {
       console.error("Error fetching stores", e);
     }
@@ -232,6 +228,7 @@ export default function App() {
       if (res.ok) {
         setCurrentPdfUrl(`${data.pdf_url}?t=${Date.now()}`);
         setCurrentTexUrl(data.tex_url);
+        setHasGenerated(true);
         fetch('/api/resume/history').then(r => r.json()).then(setHistory);
       } else {
         alert("Generation Error: " + data.detail);
@@ -483,8 +480,13 @@ export default function App() {
               projects={projects}
               toggleProjectSelection={toggleProjectSelection}
               targetCompany={targetCompany}
+              targetRole={targetRole}
               currentTexUrl={currentTexUrl}
+              setCurrentTexUrl={setCurrentTexUrl}
               currentPdfUrl={currentPdfUrl}
+              setCurrentPdfUrl={setCurrentPdfUrl}
+              hasGenerated={hasGenerated}
+              setHasGenerated={setHasGenerated}
             />
           )}
 
