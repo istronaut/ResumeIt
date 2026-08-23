@@ -1,0 +1,22 @@
+[
+  {
+    "id": "extra-1",
+    "organization": "Enactus VITC",
+    "role": "Project Pooranya Lead",
+    "location": "Noida, IN",
+    "date_range": "2025 - 2026",
+    "bullet_points": [
+      "Led project Pooranya to over an annual revenue of 5 Lakhs INR and helped secure top 4 in Enactus National Entrepreneurship competition with over 120 participating colleges."
+    ]
+  },
+  {
+    "id": "extra-2",
+    "organization": "The Helping Hand NGO",
+    "role": "National Head of HR",
+    "location": "Remote, IN",
+    "date_range": "2021 - 2023",
+    "bullet_points": [
+      "Acted as the head of HR for The Helping Hand NGO leading over 400 student volunteers."
+    ]
+  }
+]

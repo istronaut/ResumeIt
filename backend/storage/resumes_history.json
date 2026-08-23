@@ -1,0 +1,28 @@
+[
+  {
+    "id": "9ee886c0",
+    "company_name": "Samsung Research",
+    "role_title": "Senior Engineer",
+    "created_at": "2026-08-23 18:23:33",
+    "template_name": "template_1.tex",
+    "selected_project_ids": [
+      "proj-1",
+      "proj-2"
+    ],
+    "latex_file": "resume_samsung_research_20260823_182333.tex",
+    "pdf_file": "resume_samsung_research_20260823_182333.pdf"
+  },
+  {
+    "id": "7329595a",
+    "company_name": "Google Cloud",
+    "role_title": "Senior Distributed Systems Engineer",
+    "created_at": "2026-08-23 18:18:42",
+    "template_name": "template_1.tex",
+    "selected_project_ids": [
+      "proj-1",
+      "proj-2"
+    ],
+    "latex_file": "resume_google_cloud_20260823_181842.tex",
+    "pdf_file": "resume_google_cloud_20260823_181842.pdf"
+  }
+]

@@ -1,0 +1,89 @@
+{
+  "/home/ishaan/Code/ResumeIt": {
+    "repo_name": "ResumeIt",
+    "repo_path": "/home/ishaan/Code/ResumeIt",
+    "master_hash": "4111f4c027c82accad3a8b82be6a2a0fe596c7cb14e37e13da7e8e8c69e6bb5b",
+    "file_count": 21,
+    "file_hashes": {
+      "template_1.tex": "b92be07c9d18ca6465eef1886d26e210fa0ecc474cb3cd158061ed1d910ae57d",
+      "backend/test_pipeline.py": "ecf931603a49392fb89061f726f8c21dc1942f9f2fa1c57f867ff328bc2cb944",
+      "backend/config.py": "54fb27f4dc8b6005d46c1362db0e02dcf3935bbe5f87317230311341748302b2",
+      "backend/main.py": "6b29ce3a4448015f95a95806e5704afc4df3abd01d7aec5951f657e30a659f0a",
+      "backend/models/schemas.py": "56453ef9169990b5ef144e1eac9f2f5729d09dbe0c3db47ae7ef3e946587ff35",
+      "backend/agents/resume_builder.py": "002eaede092e7a2174e54f4bbc495142082abb68a58cc5358fc658973f6eb47d",
+      "backend/agents/llm_router.py": "3c85827afa5f1071822e172997558fc5ef050ad6c0a09c15d455f0080c755410",
+      "backend/agents/jd_intelligence.py": "b2e52b53351a73934a914ec96c84fe62b0414ebc4fd1b88c0732c2b5bbaac0b1",
+      "backend/agents/repo_indexer.py": "b073c19013d4a385db1b435a46c27d8cb7cd6a2cba780c57f2088f2c163f382a",
+      "backend/agents/project_rater.py": "9f0eac545e670376777de012f57bf32cd590e2257f939dcc7716eab3a29ee690",
+      "frontend/vite.config.js": "b8c675243b90baae00639a10225e3be7b8c20cbad5c111ac5129b3030c933651",
+      "frontend/.gitignore": "fe718e7babb14f3cbad2d97f08889b9ce5215ed3fe0e43b2b8cfbfb3b9b844e8",
+      "frontend/package.json": "cf886594648ed0b14887113df610072f4fccda391f5a3e8ebc6312324574d5d1",
+      "frontend/.oxlintrc.json": "1be899e45c49b2a2edc715bc3bfb31d8ed8e866ed7ebab2065ff6e55e88c2396",
+      "frontend/index.html": "67b571f16b69fd5e27feab5053d062dfae38e97ddb820f26881f05374582d2d7",
+      "frontend/package-lock.json": "dedeac7a7279ddc7dc2c87fcd7b9aeadcde5b5da8f0f5461e7529c67826e0541",
+      "frontend/README.md": "1f8fa46483b514305f44e34a47e85e88428c3a667c9494e1583628ef18d7bc79",
+      "frontend/src/App.css": "6e25a776d3e8102da5bacb3cb99f4a5fc662a2e01e6143140671a556d28c3d5c",
+      "frontend/src/main.jsx": "4b4b864dbe45253425d0c925337180ec07e204295179f80f59551216f466f618",
+      "frontend/src/App.jsx": "351c694079ab7e1a2c2887b3bf7b7a3641088299ab774ccfcb2e6e01ede2cdec",
+      "frontend/src/index.css": "f5e295c8c6eefb3d7cd188755f821c36f1c528c0ed685af223abe107c3f62003"
+    },
+    "languages": [
+      "JavaScript/TypeScript",
+      "Python"
+    ],
+    "tech_stack": [
+      "JavaScript/TypeScript",
+      "Python"
+    ],
+    "ast_summary": {
+      "total_python_files": 9,
+      "sample_classes": [
+        "CategoryScores",
+        "ProjectItem",
+        "WorkExperienceItem",
+        "ExtracurricularItem",
+        "AchievementItem",
+        "CertificateItem",
+        "IdealProfile",
+        "ResumeHistoryItem",
+        "RepoScanRequest",
+        "JDAnalysisRequest",
+        "ResumeGenerateRequest",
+        "ResumeBuilderAgent",
+        "LLMRouter",
+        "JDIntelligenceAgent",
+        "RepoIndexer"
+      ],
+      "sample_functions": [
+        "read_json_file",
+        "write_json_file",
+        "get_projects",
+        "upsert_project",
+        "delete_project",
+        "get_workexp",
+        "upsert_workexp",
+        "delete_workexp",
+        "get_achievements",
+        "upsert_achievement",
+        "delete_achievement",
+        "get_certificates",
+        "upsert_certificate",
+        "delete_certificate",
+        "get_extracurriculars",
+        "upsert_extracurricular",
+        "delete_extracurricular",
+        "get_ideal_profile",
+        "list_templates",
+        "generate_resume"
+      ]
+    },
+    "dependencies": {
+      "npm": [],
+      "python": [],
+      "cargo": [],
+      "go": [],
+      "docker": false
+    },
+    "skipped_due_to_hash_match": false
+  }
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "cert-1",
+    "title": "Deep Learning Specialization",
+    "issuer": "Coursera / DeepLearning.AI",
+    "instructor": "Andrew Ng",
+    "issue_date": "2024",
+    "credential_url": "https://coursera.org/verify/specialization"
+  },
+  {
+    "id": "cert-2",
+    "title": "Python for Everybody Specialization",
+    "issuer": "Coursera",
+    "instructor": "University of Michigan (Charles Severance)",
+    "issue_date": "2023",
+    "credential_url": "https://coursera.org/verify/py4e"
+  }
+]

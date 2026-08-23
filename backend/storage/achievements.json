@@ -1,0 +1,30 @@
+[
+  {
+    "id": "ach-1",
+    "title": "Won FOSS Hack 26' out of 700+ teams",
+    "description": "Built a low-latency client-side media pipeline by compiling FFmpeg to WebAssembly; implemented memory layout optimization and a custom runtime execution layer to bypass IPC overhead, integrating WebGPU to achieve native video rendering performance.",
+    "date": "2026",
+    "impact": "1st Place Winner out of 700+ competing teams"
+  },
+  {
+    "id": "ach-2",
+    "title": "4th Position in BIS-Awareathon, 2025",
+    "description": "Developed HallmarkHunters, bagging 4th Position in a hackathon hosted by the Government of India's Bureau of Indian Standards.",
+    "date": "2025",
+    "impact": "Top 5 Finalist"
+  },
+  {
+    "id": "ach-3",
+    "title": "National LAM Research Challenge, top 10% out of 1000+ teams, 2024",
+    "description": "Selected among top 10% nationally in algorithmic semiconductor modeling competition.",
+    "date": "2024",
+    "impact": "Top 10%"
+  },
+  {
+    "id": "ach-4",
+    "title": "Patent Published: Autonomous Air Purifier with Smart Mobility, 2023",
+    "description": "Application Number: 202441027661, Filed under VIT Chennai.",
+    "date": "2023",
+    "impact": "Official Indian Patent Publication"
+  }
+]
