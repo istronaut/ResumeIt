@@ -70,6 +70,29 @@ class IdealProfile(BaseModel):
     culture_values: List[str] = []
 
 
+class EducationItem(BaseModel):
+    institution: str
+    location: Optional[str] = None
+    degree: str
+    date_range: str = ""
+    gpa: Optional[str] = None
+
+
+class UserProfile(BaseModel):
+    full_name: str = ""
+    phone: str = ""
+    email: str = ""
+    linkedin_url: str = ""
+    linkedin_handle: str = ""
+    github_url: str = ""
+    github_handle: str = ""
+    portfolio_url: str = ""
+    portfolio_handle: str = ""
+    education: List[EducationItem] = []
+    skills: Dict[str, str] = {}
+
+
+
 class ResumeHistoryItem(BaseModel):
     id: str
     company_name: str
@@ -83,6 +106,7 @@ class ResumeHistoryItem(BaseModel):
 
 class RepoScanRequest(BaseModel):
     repo_path: str
+    scan_mode: str = "single"  # "single" (current dir) or "batch" (subdirectories)
 
 
 class JDAnalysisRequest(BaseModel):
@@ -103,3 +127,14 @@ class ResumeGenerateRequest(BaseModel):
     selected_extracurricular_ids: Optional[List[str]] = None
     include_extracurriculars: bool = False
     include_certificates: bool = True
+
+
+class LLMSelectRequest(BaseModel):
+    provider: str
+    model: Optional[str] = None
+
+
+class LLMPingRequest(BaseModel):
+    provider: str
+    model: Optional[str] = None
+

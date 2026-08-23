@@ -6,7 +6,8 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from backend.config import OUTPUT_DIR, PROJECTS_FILE, RESUMES_HISTORY_FILE
+from backend.config import OUTPUT_DIR, PROJECTS_FILE, RESUMES_HISTORY_FILE, DB_FILE
+from backend.database import init_db_and_storage, get_all_records, get_record
 from backend.agents.repo_indexer import repo_indexer
 from backend.agents.project_rater import project_rater
 from backend.agents.jd_intelligence import jd_intelligence_agent
@@ -15,6 +16,11 @@ from backend.models.schemas import ResumeGenerateRequest
 
 
 async def run_pipeline_test():
+    print("=== 0. Testing Startup Check & SQLite Initialization ===")
+    init_db_and_storage()
+    assert DB_FILE.exists(), f"Database file {DB_FILE} was not created!"
+    print(f"SQLite DB cleanly initialized at: {DB_FILE}")
+
     print("=== 1. Testing Repository Indexer & AST Parser ===")
     repo_path = "/home/ishaan/Code/ResumeIt"
     scan_res = repo_indexer.scan_repository(repo_path, force_reindex=True)
@@ -55,7 +61,7 @@ async def run_pipeline_test():
         template_name="template_1.tex",
         target_company="Google Cloud",
         target_role="Senior Distributed Systems Engineer",
-        selected_project_ids=["proj-1", "proj-2"],
+        selected_project_ids=[rated_proj.id],
         include_certificates=True
     )
     history_item = resume_builder_agent.compile_pdf(req)
@@ -64,6 +70,16 @@ async def run_pipeline_test():
     assert pdf_path.exists(), f"PDF compilation failed! {pdf_path} does not exist."
     print(f"PDF successfully compiled on Arch Linux! File size: {pdf_path.stat().st_size} bytes.")
 
+    print("\n=== 5. Testing SQLite Single-Table Record Retrieval ===")
+    records = get_all_records()
+    assert len(records) > 0, "No records found in SQLite resume_jd_records table!"
+    latest_rec = get_record(history_item.id)
+    assert latest_rec is not None, f"Record with UUID {history_item.id} not found in SQLite table!"
+    assert latest_rec["tex_content"] and len(latest_rec["tex_content"]) > 10, "TeX content missing in SQLite record!"
+    print(f"Verified SQLite Record UUID: {latest_rec['uuid']}")
+    print(f"TeX Content Length in DB: {len(latest_rec['tex_content'])} characters.")
+    print(f"Creation Date in DB: {latest_rec['created_at']}")
+
     print("\n==========================================")
     print("ALL BACKEND PIPELINE TESTS PASSED 100% SUCCESS!")
     print("==========================================")
@@ -71,3 +87,4 @@ async def run_pipeline_test():
 
 if __name__ == "__main__":
     asyncio.run(run_pipeline_test())
+

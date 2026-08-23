@@ -112,27 +112,26 @@ Docker Enabled: {deps.get('docker', False)}
             response_model=None
         )
 
-        category_scores = heuristic_scores
-        bullets = bullets_fallback
+        raw_scores = None
+        if isinstance(llm_response, dict):
+            raw_scores = llm_response.get("category_scores") or llm_response.get("ratings")
 
-        if isinstance(llm_response, dict) and "category_scores" in llm_response:
-            try:
-                raw_scores = llm_response["category_scores"]
-                category_scores = CategoryScores(
-                    frontend=min(5, max(1, int(raw_scores.get("frontend", heuristic_scores.frontend)))),
-                    backend=min(5, max(1, int(raw_scores.get("backend", heuristic_scores.backend)))),
-                    system_design=min(5, max(1, int(raw_scores.get("system_design", heuristic_scores.system_design)))),
-                    database=min(5, max(1, int(raw_scores.get("database", heuristic_scores.database)))),
-                    devops=min(5, max(1, int(raw_scores.get("devops", heuristic_scores.devops)))),
-                    architecture=min(5, max(1, int(raw_scores.get("architecture", heuristic_scores.architecture)))),
-                    cloud=min(5, max(1, int(raw_scores.get("cloud", heuristic_scores.cloud)))),
-                )
-            except Exception:
-                pass
+        if not raw_scores:
+            raise RuntimeError(f"No LLM provider available for repository rating. LLM output: {llm_response}")
 
-        if isinstance(llm_response, dict) and "bullet_points" in llm_response:
-            if isinstance(llm_response["bullet_points"], list) and len(llm_response["bullet_points"]) > 0:
-                bullets = [str(b) for b in llm_response["bullet_points"]]
+        category_scores = CategoryScores(
+            frontend=min(5, max(1, int(raw_scores.get("frontend", 3)))),
+            backend=min(5, max(1, int(raw_scores.get("backend", 3)))),
+            system_design=min(5, max(1, int(raw_scores.get("system_design", 3)))),
+            database=min(5, max(1, int(raw_scores.get("database", 3)))),
+            devops=min(5, max(1, int(raw_scores.get("devops", 3)))),
+            architecture=min(5, max(1, int(raw_scores.get("architecture", 3)))),
+            cloud=min(5, max(1, int(raw_scores.get("cloud", 3)))),
+        )
+
+        bullets = [str(b) for b in llm_response.get("bullet_points", [])] if isinstance(llm_response.get("bullet_points"), list) else [
+            f"Engineered {repo_name} system modules using {', '.join(tech_stack[:4])}."
+        ]
 
         # Check if project already exists in storage
         existing_projects = self.load_projects()

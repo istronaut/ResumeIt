@@ -18,6 +18,7 @@ from backend.config import (
     CERTIFICATES_FILE,
     RESUMES_HISTORY_FILE,
     IDEAL_PROFILE_FILE,
+    PROFILE_FILE,
     PDFLATEX_PATH,
 )
 from backend.models.schemas import ResumeGenerateRequest, ResumeHistoryItem
@@ -73,10 +74,23 @@ class ResumeBuilderAgent:
         if file_path.exists():
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        return data
             except Exception:
                 pass
         return []
+
+    def load_json_dict_store(self, file_path: Path) -> Dict[str, Any]:
+        if file_path.exists():
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        return data
+            except Exception:
+                pass
+        return {}
 
     def save_history(self, history_item: ResumeHistoryItem):
         history = self.load_json_store(RESUMES_HISTORY_FILE)
@@ -88,7 +102,6 @@ class ResumeBuilderAgent:
         """Generates LaTeX source code by filling the parametrized template_1.tex."""
         template_path = TEMPLATES_DIR / req.template_name
         if not template_path.exists():
-            # Fallback to template_1.tex in workspace or root storage
             template_path = Path("/home/ishaan/Code/ResumeIt/template_1.tex")
             if not template_path.exists():
                 raise FileNotFoundError(f"Template not found: {req.template_name}")
@@ -102,13 +115,14 @@ class ResumeBuilderAgent:
         extracurriculars_data = self.load_json_store(EXTRACURRICULARS_FILE)
         achievements_data = self.load_json_store(ACHIEVEMENTS_FILE)
         certificates_data = self.load_json_store(CERTIFICATES_FILE)
+        profile_data = self.load_json_dict_store(PROFILE_FILE)
 
         # Filter Projects based on selected_project_ids or pick top projects
         selected_projects = []
         if req.selected_project_ids:
             selected_projects = [p for p in projects_data if p.get("id") in req.selected_project_ids]
         else:
-            selected_projects = projects_data[:3]
+            selected_projects = projects_data
 
         # Filter Experience
         selected_workexp = []
@@ -122,66 +136,127 @@ class ResumeBuilderAgent:
         if req.selected_achievement_ids:
             selected_achievements = [a for a in achievements_data if a.get("id") in req.selected_achievement_ids]
 
-        # Build Experience Section LaTeX
-        exp_lines = []
-        exp_lines.append(r"\section{Experience}")
-        exp_lines.append(r"\resumeSubHeadingListStart")
-        for item in selected_workexp:
-            comp = self.escape_latex(item.get("company", ""))
-            url = item.get("company_url", "")
-            comp_latex = f"\\href{{{url}}}{{{comp}}}" if url else comp
-            loc = self.escape_latex(item.get("location", ""))
-            role = self.escape_latex(item.get("role", ""))
-            dates = self.escape_latex(item.get("date_range", ""))
+        # Build Header Section LaTeX
+        full_name = self.escape_latex(profile_data.get("full_name", ""))
+        phone = self.escape_latex(profile_data.get("phone", ""))
+        email = self.escape_latex(profile_data.get("email", ""))
+        linkedin_url = profile_data.get("linkedin_url", "")
+        linkedin_handle = self.escape_latex(profile_data.get("linkedin_handle", "") or "LinkedIn")
+        github_url = profile_data.get("github_url", "")
+        github_handle = self.escape_latex(profile_data.get("github_handle", "") or "GitHub")
+        portfolio_url = profile_data.get("portfolio_url", "")
+        portfolio_handle = self.escape_latex(profile_data.get("portfolio_handle", "") or "Portfolio")
 
-            exp_lines.append(f"\\resumeSubheading{{{comp_latex}}}{{{loc}}}{{{role}}}{{{dates}}}")
-            exp_lines.append(r"\resumeItemListStart")
-            for bullet in item.get("bullet_points", []):
-                b_text = self.escape_latex(bullet)
-                exp_lines.append(f"\\resumeItemWithoutTitle{{{b_text}}}")
-            exp_lines.append(r"\resumeItemListEnd")
-        exp_lines.append(r"\resumeSubHeadingListEnd")
-        experience_block = "\n".join(exp_lines)
+        header_items = []
+        if phone:
+            phone_clean = re.sub(r'[^\d+]', '', phone)
+            header_items.append(f"\\href{{tel:{phone_clean}}}{{\\raisebox{{-0.2\\height}}\\faPhone\\ \\underline{{{phone}}}}}")
+        if email:
+            header_items.append(f"\\href{{mailto:{email}}}{{\\raisebox{{-0.2\\height}}\\faEnvelope\\ \\underline{{{email}}}}}")
+        if linkedin_url:
+            header_items.append(f"\\href{{{linkedin_url}}}{{\\raisebox{{-0.2\\height}}\\faLinkedin\\ \\underline{{{linkedin_handle}}}}}")
+        if github_url:
+            header_items.append(f"\\href{{{github_url}}}{{\\raisebox{{-0.2\\height}}\\faGithub\\ \\underline{{{github_handle}}}}}")
+        if portfolio_url:
+            header_items.append(f"\\href{{{portfolio_url}}}{{\\raisebox{{-0.2\\height}}\\faGlobe\\ \\underline{{{portfolio_handle}}}}}")
+
+        display_name = full_name if full_name else "FIRST LAST"
+        joined_links = " ~ $\\vert$ ~ \n  ".join(header_items) if header_items else "\\normalsize Phone $\\vert$ Email $\\vert$ LinkedIn $\\vert$ GitHub"
+
+        header_block = f"""\\begin{{center}}
+  \\LARGE \\textbf{{{display_name}}} \\\\ \\vspace{{5pt}}
+  \\normalsize
+  {joined_links}
+\\end{{center}}"""
+
+        # Build Education Section LaTeX
+        education_data = profile_data.get("education", [])
+        education_block = ""
+        if education_data:
+            edu_lines = [r"\section{Education}", r"\resumeSubHeadingListStart"]
+            for edu in education_data:
+                inst = self.escape_latex(edu.get("institution", ""))
+                loc = self.escape_latex(edu.get("location", ""))
+                deg = self.escape_latex(edu.get("degree", ""))
+                gpa = edu.get("gpa")
+                if gpa:
+                    deg = f"{deg}, GPA: {self.escape_latex(str(gpa))}"
+                dates = self.escape_latex(edu.get("date_range", ""))
+                edu_lines.append(f"\\resumeSubheading{{{inst}}}{{{loc}}}{{{deg}}}{{{dates}}}")
+            edu_lines.append(r"\resumeSubHeadingListEnd")
+            education_block = "\n".join(edu_lines)
+
+        # Build Skills Section LaTeX
+        skills_data = profile_data.get("skills", {})
+        skills_block = ""
+        if skills_data:
+            sk_lines = [r"\section{Skills Summary}", r"\resumeSubHeadingListStart"]
+            for cat, val in skills_data.items():
+                cat_escaped = self.escape_latex(cat)
+                val_escaped = self.escape_latex(val)
+                sk_lines.append(f"\\resumeItem{{{cat_escaped}}}{{{val_escaped}}}")
+                sk_lines.append(r"\vspace{-2pt}")
+            sk_lines.append(r"\resumeSubHeadingListEnd")
+            skills_block = "\n".join(sk_lines)
+
+        # Build Experience Section LaTeX
+        experience_block = ""
+        if selected_workexp:
+            exp_lines = [r"\section{Experience}", r"\resumeSubHeadingListStart"]
+            for item in selected_workexp:
+                comp = self.escape_latex(item.get("company", ""))
+                url = item.get("company_url", "")
+                comp_latex = f"\\href{{{url}}}{{{comp}}}" if url else comp
+                loc = self.escape_latex(item.get("location", ""))
+                role = self.escape_latex(item.get("role", ""))
+                dates = self.escape_latex(item.get("date_range", ""))
+
+                exp_lines.append(f"\\resumeSubheading{{{comp_latex}}}{{{loc}}}{{{role}}}{{{dates}}}")
+                exp_lines.append(r"\resumeItemListStart")
+                for bullet in item.get("bullet_points", []):
+                    b_text = self.escape_latex(bullet)
+                    exp_lines.append(f"\\resumeItemWithoutTitle{{{b_text}}}")
+                exp_lines.append(r"\resumeItemListEnd")
+            exp_lines.append(r"\resumeSubHeadingListEnd")
+            experience_block = "\n".join(exp_lines)
 
         # Build Projects Section LaTeX
-        proj_lines = []
-        proj_lines.append(r"\section{Projects}")
-        proj_lines.append(r"\resumeSubHeadingListStart")
-        for proj in selected_projects:
-            title = self.escape_latex(proj.get("title", ""))
-            link = proj.get("link", "")
-            title_latex = f"\\href{{{link}}}{{{title}}}" if link else title
-            tech_stack = ", ".join(self.escape_latex(t) for t in proj.get("tech_stack", []))
+        projects_block = ""
+        if selected_projects:
+            proj_lines = [r"\section{Projects}", r"\resumeSubHeadingListStart"]
+            for proj in selected_projects:
+                title = self.escape_latex(proj.get("title", ""))
+                link = proj.get("link", "")
+                title_latex = f"\\href{{{link}}}{{{title}}}" if link else title
+                tech_stack = ", ".join(self.escape_latex(t) for t in proj.get("tech_stack", []))
 
-            proj_lines.append(f"\\resumeSubheading{{{title_latex}}}{{}}{{{tech_stack}}}{{}}")
-            proj_lines.append(r"\resumeItemListStart")
-            for bullet in proj.get("bullet_points", []):
-                b_text = self.escape_latex(bullet)
-                proj_lines.append(f"\\resumeItemWithoutTitle{{{b_text}}}")
-            proj_lines.append(r"\resumeItemListEnd")
-        proj_lines.append(r"\resumeSubHeadingListEnd")
-        projects_block = "\n".join(proj_lines)
+                proj_lines.append(f"\\resumeSubheading{{{title_latex}}}{{}}{{{tech_stack}}}{{}}")
+                proj_lines.append(r"\resumeItemListStart")
+                for bullet in proj.get("bullet_points", []):
+                    b_text = self.escape_latex(bullet)
+                    proj_lines.append(f"\\resumeItemWithoutTitle{{{b_text}}}")
+                proj_lines.append(r"\resumeItemListEnd")
+            proj_lines.append(r"\resumeSubHeadingListEnd")
+            projects_block = "\n".join(proj_lines)
 
         # Build Achievements Section LaTeX
-        ach_lines = []
-        ach_lines.append(r"\section{Achievements}")
-        ach_lines.append(r"\resumeSubHeadingListStart")
-        for ach in selected_achievements:
-            title = self.escape_latex(ach.get("title", ""))
-            desc = self.escape_latex(ach.get("description", ""))
-            date = self.escape_latex(ach.get("date", ""))
-            
-            date_suffix = f", {date}" if date else ""
-            ach_lines.append(f"\\item \\textbf{{{title}{date_suffix}}} \\\\ {desc} \\vspace{{-2pt}}")
-        ach_lines.append(r"\resumeSubHeadingListEnd")
-        achievements_block = "\n".join(ach_lines)
+        achievements_block = ""
+        if selected_achievements:
+            ach_lines = [r"\section{Achievements}", r"\resumeSubHeadingListStart"]
+            for ach in selected_achievements:
+                title = self.escape_latex(ach.get("title", ""))
+                desc = self.escape_latex(ach.get("description", ""))
+                date = self.escape_latex(ach.get("date", ""))
+                
+                date_suffix = f", {date}" if date else ""
+                ach_lines.append(f"\\item \\textbf{{{title}{date_suffix}}} \\\\ {desc} \\vspace{{-2pt}}")
+            ach_lines.append(r"\resumeSubHeadingListEnd")
+            achievements_block = "\n".join(ach_lines)
 
-        # Build Certificates Section LaTeX (including Instructor/Teacher if present)
+        # Build Certificates Section LaTeX
         cert_block = ""
         if req.include_certificates and certificates_data:
-            cert_lines = []
-            cert_lines.append(r"\section{Certifications}")
-            cert_lines.append(r"\resumeSubHeadingListStart")
+            cert_lines = [r"\section{Certifications}", r"\resumeSubHeadingListStart"]
             for c in certificates_data:
                 ctitle = self.escape_latex(c.get("title", ""))
                 issuer = self.escape_latex(c.get("issuer", ""))
@@ -193,22 +268,47 @@ class ResumeBuilderAgent:
             cert_lines.append(r"\resumeSubHeadingListEnd")
             cert_block = "\n".join(cert_lines)
 
-        # Dynamic injection into template_1.tex
-        # If template contains explicit experience/projects sections, we replace them seamlessly
+        # Build Extracurriculars Section LaTeX
+        extra_block = ""
+        if req.include_extracurriculars and extracurriculars_data:
+            extra_lines = [r"\section{Extracurricular Activities}", r"\resumeSubHeadingListStart"]
+            for ex in extracurriculars_data:
+                org = self.escape_latex(ex.get("organization", ""))
+                role = self.escape_latex(ex.get("role", ""))
+                loc = self.escape_latex(ex.get("location", ""))
+                dates = self.escape_latex(ex.get("date_range", ""))
+                extra_lines.append(f"\\resumeSubheading{{{org}}}{{{loc}}}{{{role}}}{{{dates}}}")
+                extra_lines.append(r"\resumeItemListStart")
+                for bullet in ex.get("bullet_points", []):
+                    b_text = self.escape_latex(bullet)
+                    extra_lines.append(f"\\resumeItemWithoutTitle{{{b_text}}}")
+                extra_lines.append(r"\resumeItemListEnd")
+            extra_lines.append(r"\resumeSubHeadingListEnd")
+            extra_block = "\n".join(extra_lines)
+
+        # Substitute placeholders in template_1.tex
         latex_out = template_content
+        latex_out = latex_out.replace("((HEADER_SECTION))", header_block)
+        latex_out = latex_out.replace("((EDUCATION_SECTION))", education_block)
+        latex_out = latex_out.replace("((SKILLS_SECTION))", skills_block)
+        latex_out = latex_out.replace("((EXPERIENCE_SECTION))", experience_block)
+        latex_out = latex_out.replace("((PROJECTS_SECTION))", projects_block)
+        latex_out = latex_out.replace("((ACHIEVEMENTS_SECTION))", achievements_block)
+        latex_out = latex_out.replace("((CERTIFICATIONS_SECTION))", cert_block)
+        latex_out = latex_out.replace("((EXTRACURRICULARS_SECTION))", extra_block)
 
+        # Fallback for templates without explicit placeholders
         if r"\section{Experience}" in latex_out and r"\section{Projects}" in latex_out:
-            # Replace Experience section block
             exp_regex = r"\\section\{Experience\}.*?(?=\\section\{Projects\}|\\section\{Achievements\}|\\end\{document\})"
-            latex_out = re.sub(exp_regex, lambda m: experience_block + "\n\n", latex_out, flags=re.DOTALL)
+            latex_out = re.sub(exp_regex, lambda m: (experience_block + "\n\n") if experience_block else "", latex_out, flags=re.DOTALL)
 
-            # Replace Projects section block
             proj_regex = r"\\section\{Projects\}.*?(?=\\section\{Achievements\}|\\section\{Education\}|\\end\{document\})"
-            latex_out = re.sub(proj_regex, lambda m: projects_block + "\n\n", latex_out, flags=re.DOTALL)
+            latex_out = re.sub(proj_regex, lambda m: (projects_block + "\n\n") if projects_block else "", latex_out, flags=re.DOTALL)
 
-            # Replace Achievements section block
-            ach_and_certs = achievements_block + ("\n\n" + cert_block if cert_block else "") + "\n\n" + r"\end{document}"
-            latex_out = re.sub(r"\\section\{Achievements\}.*?\\end\{document\}", lambda m: ach_and_certs, latex_out, flags=re.DOTALL)
+            ach_and_certs = (achievements_block + ("\n\n" + cert_block if cert_block else "")).strip()
+            if ach_and_certs:
+                ach_and_certs += "\n\n"
+            latex_out = re.sub(r"\\section\{Achievements\}.*?\\end\{document\}", lambda m: ach_and_certs + r"\end{document}", latex_out, flags=re.DOTALL)
 
         return latex_out
 
@@ -258,6 +358,19 @@ class ResumeBuilderAgent:
         )
 
         self.save_history(history_item)
+        try:
+            from backend.database import save_record
+            save_record(
+                uuid_str=history_item.id,
+                company_name=history_item.company_name,
+                role_title=history_item.role_title,
+                jd_pdf_bytes=None,
+                tex_content=latex_code,
+                pdf_filename=history_item.pdf_file,
+            )
+        except Exception as e:
+            logger.error(f"Error logging record to SQLite: {e}")
+
         return history_item
 
 
