@@ -112,7 +112,7 @@ async def get_llm_models():
         "providers": [
             {
                 "id": "auto",
-                "name": "Auto (Fallback Chain)",
+                "name": "Auto Provider Router",
                 "description": "Gemini -> NVIDIA NIM -> Local Ollama",
                 "available": True,
                 "model": "Auto-selected",

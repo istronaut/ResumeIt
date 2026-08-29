@@ -135,7 +135,7 @@ class LLMRouter:
                     return res
                 errors.append(f"Ollama: {res.get('error')}")
 
-                return {"status": "offline", "error": "No LLM provider available. " + " | ".join(errors)}
+                return {"status": "offline", "error": "No LLM found. " + " | ".join(errors)}
             else:
                 return {"status": "offline", "error": f"Unknown provider: {provider}"}
 
@@ -232,7 +232,7 @@ class LLMRouter:
             logger.error(f"All LLM providers failed (Gemini, NVIDIA, Ollama): {e}")
 
         # Strict: Do NOT return fake heuristic models. Raise exception when no LLM is available.
-        raise RuntimeError("No LLM provider available. Please configure a valid API key for Gemini / NVIDIA NIM, or start local Ollama.")
+        raise RuntimeError("No LLM found. Please configure a valid API key for Gemini / NVIDIA NIM, or start local Ollama.")
 
     async def _call_gemini(self, prompt: str, system_prompt: str) -> Tuple[dict, str]:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={self.gemini_key}"
@@ -275,7 +275,7 @@ class LLMRouter:
             return clean_and_parse_json(text), "nvidia_nim"
 
     async def _call_ollama(self, prompt: str, system_prompt: str) -> Tuple[dict, str]:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             target_model = await self._get_available_ollama_model(client)
             url_generate = f"{self.ollama_url}/api/generate"
             payload = {

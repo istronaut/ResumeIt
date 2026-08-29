@@ -60,14 +60,39 @@ class CertificateItem(BaseModel):
     credential_url: Optional[str] = None
 
 
-class IdealProfile(BaseModel):
-    company_name: str
+class JDMetadata(BaseModel):
     role_title: str
-    key_skills_hierarchy: List[str] = []
-    domain_focus: List[str] = []
+    company_name: Optional[str] = None
+    seniority_level: str = Field(default="mid", description="intern | entry | mid | senior | lead | staff")
+    location_type: str = Field(default="remote", description="remote | hybrid | on-site")
+    primary_domain: str = Field(default="backend", description="frontend, backend, fullstack, devops_sre, machine_learning, data_engineering, embedded_systems")
+
+
+class SkillsTaxonomy(BaseModel):
+    recommended_categories: List[str] = Field(default_factory=list, description="Ordered 3-5 skill category headers for LaTeX Skills section")
+
+
+class ATSOptimization(BaseModel):
+    exact_keywords: List[str] = Field(default_factory=list, description="Critical technical terms extracted verbatim")
+    action_verbs: List[str] = Field(default_factory=list, description="Strong verbs emphasized in JD")
+    methodologies: List[str] = Field(default_factory=list, description="Workflows and architectures")
+
+
+class IdealProfile(BaseModel):
+    metadata: Optional[JDMetadata] = None
+    skills_taxonomy: Optional[SkillsTaxonomy] = None
+    domain_weights: Dict[str, float] = Field(default_factory=dict, description="Normalized weights summing to 1.0")
+    ats_optimization: Optional[ATSOptimization] = None
+    key_responsibilities: List[str] = Field(default_factory=list, description="3-5 concise bullet points capturing core functional expectations")
+
+    # Legacy/convenience top-level fields for backwards-compatibility
+    company_name: Optional[str] = "Target Company"
+    role_title: Optional[str] = "Software Engineer"
+    key_skills_hierarchy: List[str] = Field(default_factory=list)
+    domain_focus: List[str] = Field(default_factory=list)
     expected_bullet_tone: str = "Metric-driven, technical action verbs"
-    role_keywords: List[str] = []
-    culture_values: List[str] = []
+    role_keywords: List[str] = Field(default_factory=list)
+    culture_values: List[str] = Field(default_factory=list)
 
 
 class EducationItem(BaseModel):

@@ -23,53 +23,8 @@ class ProjectRater:
         with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
             json.dump(projects, f, indent=2)
 
-    def _deterministic_category_score(self, category: str, tech_stack: List[str], languages: List[str], deps: Dict[str, Any]) -> int:
-        """Fallback deterministic heuristic scoring (1 to 5)."""
-        cat = category.lower()
-        score = 1
-
-        tech_str = " ".join(t.lower() for t in tech_stack + languages + deps.get("npm", []) + deps.get("python", []))
-
-        if cat == "frontend":
-            if any(k in tech_str for k in ["react", "vue", "angular", "next", "typescript", "three", "css", "tailwind", "vite"]):
-                score += 2
-            if any(k in tech_str for k in ["webassembly", "three.js", "gsap", "cypress", "webrtc"]):
-                score += 2
-        elif cat == "backend":
-            if any(k in tech_str for k in ["fastapi", "express", "go", "gin", "node", "django", "flask", "actix", "spring", "python"]):
-                score += 2
-            if any(k in tech_str for k in ["async", "multithreading", "concurrent", "grpc", "websocket", "hmac"]):
-                score += 2
-        elif cat == "system_design":
-            if any(k in tech_str for k in ["distributed", "microservices", "pubsub", "queue", "webrtc", "ast", "stream"]):
-                score += 2
-            if any(k in tech_str for k in ["redis", "kafka", "rabbitmq", "concurrency", "load testing", "k6"]):
-                score += 2
-        elif cat == "database":
-            if any(k in tech_str for k in ["postgres", "mysql", "mongodb", "redis", "sqlite", "vector", "orm", "sql"]):
-                score += 2
-            if any(k in tech_str for k in ["indexing", "sharding", "acid", "row-level", "migration"]):
-                score += 2
-        elif cat == "devops":
-            if deps.get("docker") or "docker" in tech_str or "ci/cd" in tech_str or "actions" in tech_str:
-                score += 2
-            if any(k in tech_str for k in ["kubernetes", "terraform", "nginx", "prometheus", "grafana"]):
-                score += 2
-        elif cat == "architecture":
-            if len(languages) > 1 or len(tech_stack) >= 4:
-                score += 2
-            if any(k in tech_str for k in ["clean", "domain", "hexagonal", "modular", "ast", "compiler", "cryptography"]):
-                score += 2
-        elif cat == "cloud":
-            if any(k in tech_str for k in ["aws", "gcp", "azure", "s3", "lambda", "cloudflare", "vercel", "docker"]):
-                score += 2
-            if any(k in tech_str for k in ["container", "serverless", "cdn"]):
-                score += 1
-
-        return min(5, max(1, score))
-
     async def rate_and_formulate_project(self, repo_data: Dict[str, Any]) -> ProjectItem:
-        """Rates codebase data using LLM with deterministic fallback, clamped to 1-5 via Pydantic."""
+        """Rates codebase data using LLM, clamped to 1-5 via Pydantic."""
         repo_name = repo_data.get("repo_name", "Untitled Project")
         repo_path = repo_data.get("repo_path", "")
         tech_stack = repo_data.get("tech_stack", [])
@@ -90,27 +45,15 @@ Docker Enabled: {deps.get('docker', False)}
 
         system_prompt = "You are a senior principal engineer and tech resume evaluator. Return strictly valid JSON."
 
-        # Compute heuristic fallback scores
-        heuristic_scores = CategoryScores(
-            frontend=self._deterministic_category_score("frontend", tech_stack, languages, deps),
-            backend=self._deterministic_category_score("backend", tech_stack, languages, deps),
-            system_design=self._deterministic_category_score("system_design", tech_stack, languages, deps),
-            database=self._deterministic_category_score("database", tech_stack, languages, deps),
-            devops=self._deterministic_category_score("devops", tech_stack, languages, deps),
-            architecture=self._deterministic_category_score("architecture", tech_stack, languages, deps),
-            cloud=self._deterministic_category_score("cloud", tech_stack, languages, deps),
-        )
-
-        bullets_fallback = [
-            f"Architected {repo_name} using {', '.join(tech_stack[:4])}; optimized core workflows reducing latency and execution overhead.",
-            f"Engineered high-throughput system modules with {languages[0] if languages else 'modern tools'}; implemented unit testing and validated architecture benchmarks."
-        ]
-
-        llm_response, provider = await llm_router.generate_structured(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            response_model=None
-        )
+        try:
+            llm_response, provider = await llm_router.generate_structured(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                response_model=None
+            )
+        except Exception as e:
+            logger.error(f"LLM rating call failed: {e}")
+            raise RuntimeError(f"No LLM found: {e}")
 
         raw_scores = None
         if isinstance(llm_response, dict):
@@ -124,7 +67,7 @@ Docker Enabled: {deps.get('docker', False)}
                 raw_scores = llm_response
 
         if not raw_scores or not isinstance(raw_scores, dict):
-            raise RuntimeError(f"No LLM provider available for repository rating. LLM output: {llm_response}")
+            raise RuntimeError(f"No LLM found. LLM output could not be parsed: {llm_response}")
 
         def parse_score(keys: list, default: int = 3) -> int:
             lower_dict = {str(k).lower(): v for k, v in raw_scores.items()}
